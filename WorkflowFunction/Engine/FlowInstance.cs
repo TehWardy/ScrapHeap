@@ -160,24 +160,23 @@ namespace Workflow
         private string BuildAssign(Activity activity, Flow flow)
         {
             var assigns = activity.Previous.Select(source =>
-                {
-                    var link = flow.Links.First(l => l.Source == source.Ref && l.Destination == activity.Ref);
-                    var sourceType = source.GetType().GetCSharpTypeName();
-                    var destType = activity.GetType().GetCSharpTypeName();
-
-                    return (string.IsNullOrEmpty(link.Expression?.Trim()))
-                        ? null
-                        : $"//LINK:: {source.Ref} => {activity.Ref}\n" + link.Expression
-                            .Replace("destination.", $"(({destType})activity).")
-                            .Replace("source.", $"flow.GetActivity<{sourceType}>(\"{source.Ref}\").");
-                })
+            {
+                var link = flow.Links.First(l => l.Source == source.Ref && l.Destination == activity.Ref);
+                var sourceType = source.GetType().GetCSharpTypeName();
+                var destType = activity.GetType().GetCSharpTypeName();
+                return string.IsNullOrEmpty(link.Expression?.Trim())
+                    ? null
+                    : $"//LINK:: {source.Ref} => {activity.Ref}\n" + link.Expression
+                        .Replace("destination.", $"(({destType})activity).")
+                        .Replace("source.", $"flow.GetActivity<{sourceType}>(\"{source.Ref}\").");
+            })
                 .Where(i => i != null)
                 .ToArray();
 
-            var body = $"\t{string.Join(";\n\t", assigns)}".Trim();
+            var body = $"\t{string.Join(";\n\t", assigns)}";
 
             // the complete block as a single "Action<Activity>" that can be called
-            if (assigns.Any() && !string.IsNullOrEmpty(body)) return $"(activity, variables, flow) => {{\n{body}\n}}";
+            if (assigns.Any()) return $"(activity, variables, flow) => {{\n{body}\n}}";
             return null;
         }
     }

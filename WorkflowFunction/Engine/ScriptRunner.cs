@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Loader;
 using System.Threading.Tasks;
 
 namespace Workflow
@@ -22,16 +21,15 @@ namespace Workflow
             {
                 if (references == null)
                 {
-                    var loadCtx = AssemblyLoadContext.GetLoadContext(typeof(Execute).Assembly);
-
                     // some of the stack might not have been loaded, lets make sure we load everything so we can give a complete response
                     // first grab what's loaded
-                    var loadedAlready = loadCtx.Assemblies
+                    var loadedAlready = AppDomain.CurrentDomain
+                            .GetAssemblies()
                             .Where(a => !a.IsDynamic)
                             .ToList();
 
                     // then grab the bin directory
-                    var thisAssembly = typeof(Execute).Assembly;
+                    var thisAssembly = Assembly.GetExecutingAssembly();
                     var binDir = thisAssembly.Location
                         .Replace(thisAssembly.ManifestModule.Name, "");
                     log(WorkflowLogLevel.Debug, $"Bin Directory: {binDir}");
@@ -51,15 +49,15 @@ namespace Workflow
                         .ToArray();
                     foreach (var assemblyPath in toLoad)
                     {
-                        try 
+                        try
                         {
-                            var a = loadCtx.LoadFromAssemblyPath(assemblyPath);
+                            var a = Assembly.LoadFile(assemblyPath);
                             loadedAlready.Add(a);
                             log(WorkflowLogLevel.Info, $"Loaded: {a.FullName} ");
-                        } 
-                        catch (Exception ex) 
+                        }
+                        catch (Exception ex)
                         {
-                            log(WorkflowLogLevel.Warning, $"Unable to load assembly {assemblyPath} because: " + ex.Message); 
+                            log(WorkflowLogLevel.Warning, $"Unable to load assembly {assemblyPath} because: " + ex.Message);
                         }
                     }
 
@@ -87,7 +85,8 @@ namespace Workflow
                     log(WorkflowLogLevel.Debug, message);
                 }
 
-                return await CSharpScript.EvaluateAsync<T>(code, options);
+                var result = await CSharpScript.EvaluateAsync<T>(code, options);
+                return result;
             }
             catch (Exception ex)
             {
